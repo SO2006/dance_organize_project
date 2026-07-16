@@ -6,8 +6,10 @@ cd "$(dirname "$0")"
 echo "Checking dependencies..."
 pip3 install pyinstaller streamlit pandas numpy plotly openpyxl altair --quiet
 
+cp ../danceui.py .
+
 echo "Building DanceUI for macOS..."
-pyinstaller danceui_mac.spec --clean --noconfirm
+python3 -m PyInstaller danceui_mac.spec --clean --noconfirm
 
 echo ""
 echo "Build complete!"
