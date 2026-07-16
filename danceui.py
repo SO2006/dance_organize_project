@@ -4,6 +4,8 @@ import numpy as np
 import plotly.express as px
 import json
 import os
+import tkinter as tk
+from tkinter import filedialog
 from enum import Enum
 from typing import Optional
 from dataclasses import dataclass
@@ -63,6 +65,19 @@ class DanceNumber:
             print(f"  Class Time:       {self.class_time}")
 
 
+def choose_excel_save_path(default_name: str = "dance_order.xlsx") -> str:
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    file_path = filedialog.asksaveasfilename(
+        title="Choose where to save the Excel file",
+        defaultextension=".xlsx",
+        initialfile=default_name,
+        filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+    )
+    root.destroy()
+    return file_path
+
 st.title("Dance Data Uploader")
 
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx"])
@@ -101,7 +116,7 @@ if uploaded_file is not None:
 
     with open(save_path, "w") as f:
         json.dump(replace_nan(records.to_dict(orient="records")), f, indent=2)
-
+    
     st.info(f"Data saved to `{save_path}`")
 
 def organize_dances(dance_numbers: list[DanceNumber], gap: int = 2) -> list[DanceNumber] | None:
@@ -250,17 +265,31 @@ if st.button("Order the Dances"):
 if "organized" in st.session_state:
     organized = st.session_state["organized"]
     st.subheader("Suggested Order")
-    for i, dance in enumerate(organized, 1):
-        st.write(f"{i}. **{dance.name}** — {', '.join(dance.dancers)} — {'Difficult' if dance.is_difficult else 'Standard'}")
+    lines = [f"{i}. **{dance.name}** — {', '.join(dance.dancers)} — {'Difficult' if dance.is_difficult else 'Standard'}" for i, dance in enumerate(organized, 1)]
+    st.markdown("  \n".join(lines))
 
-    if st.button("Save this order"):
-        st.session_state["saving"] = True
+    if not st.session_state.get("saving"):
+        if st.button("Save this order"):
+            st.session_state["saving"] = True
 
     if st.session_state.get("saving"):
+        if "save_path" not in st.session_state:
+            st.session_state["save_path"] = ""
+        
+        if st.button("Choose save file"):
+            default_name = f"{st.session_state.get('save_file_name', 'dance_order')}.xlsx"
+            selected_path = choose_excel_save_path(default_name)
+            if selected_path:
+                st.session_state["save_path"] = selected_path
+                print(f"Selected save path: {selected_path}")
+                st.session_state["save_file_name"] = selected_path
         file_name = st.text_input("Enter a file name (without extension):", key="save_file_name")
-        if st.button("Confirm Save") and file_name:
-            base = os.path.dirname(os.path.abspath(__file__))
-            xlsx_out = os.path.join(base, f"{file_name}.xlsx")
-            save_dances_xlsx(organized, xlsx_out)
-            st.success(f"Order saved to `{xlsx_out}`.")
+
+
+        if st.button("Confirm Save") and (save_path or file_name):
+            final_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{file_name}")
+            if not final_path.lower().endswith(".xlsx"):
+                final_path = f"{final_path}.xlsx"
+            save_dances_xlsx(organized, final_path)
+            st.success(f"Order saved to `{final_path}`.")
             st.session_state["saving"] = False
